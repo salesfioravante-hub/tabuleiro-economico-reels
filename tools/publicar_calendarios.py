@@ -74,9 +74,11 @@ def rodar(conta, executar):
         gravar(p, linhas)
         return f'{conta}: há post incerto sem resolução: nada publicado'
     hoje = agora().strftime('%Y-%m-%d')
-    if any(l['status'] == 'postado' and l['data_postagem'] == hoje and not l.get('quando') for l in linhas):
+    fila_feita = any(l['status'] == 'postado' and l['data_postagem'] == hoje and not l.get('quando') for l in linhas)
+    # limite de 1 por dia vale só para a fila; posts com horário fixo ('quando') ignoram o limite
+    pend = sorted([l for l in linhas if devida(l, agora()) and (l.get('quando') or not fila_feita)], key=lambda l: (l.get('quando') or '9999', int(l['id']) if str(l['id']).isdigit() else 0))
+    if not pend and fila_feita:
         return f'{conta}: já publicou a fila de hoje'
-    pend = sorted([l for l in linhas if devida(l, agora())], key=lambda l: (l.get('quando') or '9999', int(l['id']) if str(l['id']).isdigit() else 0))
     if not pend:
         return f'{conta}: nada devido agora ({sum(l["status"] == "pendente" for l in linhas)} pendentes)'
     l = pend[0]
