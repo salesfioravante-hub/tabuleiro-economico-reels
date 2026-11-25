@@ -12,6 +12,7 @@ Uso:  python3 tools/publicar_calendarios.py            (simulação: só mostra 
 """
 import csv
 import datetime as dt
+import io
 import json
 import os
 import sys
@@ -32,13 +33,20 @@ def ler(conta):
     p = os.path.join(RAIZ, 'calendarios', f'{conta}.csv')
     if not os.path.exists(p):
         return p, []
-    return p, list(csv.DictReader(open(p, encoding='utf-8')))
+    return p, list(csv.DictReader(open(p, encoding='utf-8', newline='')))
 
 
 def gravar(p, linhas):
-    w = csv.DictWriter(open(p, 'w', newline='', encoding='utf-8'), fieldnames=CAMPOS, lineterminator='\n')
+    """grava o CSV (fim de linha \n) só se o conteúdo mudou: simulações não deixam o repositório 'sujo'"""
+    buf = io.StringIO(newline='')
+    w = csv.DictWriter(buf, fieldnames=CAMPOS, lineterminator='\n')
     w.writeheader()
     w.writerows([{k: l.get(k, '') for k in CAMPOS} for l in linhas])
+    novo = buf.getvalue()
+    if os.path.exists(p) and open(p, encoding='utf-8', newline='').read() == novo:
+        return False
+    open(p, 'w', encoding='utf-8', newline='').write(novo)
+    return True
 
 
 def devida(l, agora_):
